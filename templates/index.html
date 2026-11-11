@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Digit Recognition AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+            min-height: 100vh;
+            color: #c9d1d9;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #1a237e, #0d47a1);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            border: 1px solid #30363d;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .header h1 { font-size: 2.4rem; color: #ffffff; font-weight: 800; letter-spacing: 2px; }
+        .header p { color: #90caf9; font-size: 1rem; margin-top: 8px; }
+        .badge { display: inline-block; background: #f57f17; color: white; padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-top: 10px; letter-spacing: 1px; }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; margin: 0 auto; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .card h2 { color: #58a6ff; font-size: 1rem; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #21262d; text-transform: uppercase; letter-spacing: 1px; }
+        .canvas-wrapper { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+        #canvas { border: 3px solid #30363d; border-radius: 12px; cursor: crosshair; background: #000; box-shadow: 0 0 30px rgba(88,166,255,0.15); transition: border-color 0.3s; }
+        #canvas:hover { border-color: #58a6ff; }
+        #canvas.drawing { border-color: #f57f17; box-shadow: 0 0 30px rgba(245,127,23,0.3); }
+        .canvas-hint { color: #6e7681; font-size: 0.85rem; text-align: center; }
+        .btn-group { display: flex; gap: 12px; width: 100%; }
+        .btn { flex: 1; padding: 14px 20px; border: none; border-radius: 10px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .btn-predict { background: linear-gradient(135deg, #1565c0, #1976d2); color: white; box-shadow: 0 4px 15px rgba(21,101,192,0.4); }
+        .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(21,101,192,0.6); }
+        .btn-clear { background: linear-gradient(135deg, #b71c1c, #c62828); color: white; box-shadow: 0 4px 15px rgba(183,28,28,0.4); }
+        .btn-clear:hover { transform: translateY(-2px); }
+        .result-box { text-align: center; padding: 24px; background: #0d1117; border-radius: 12px; border: 2px solid #21262d; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .result-digit { font-size: 5rem; font-weight: 900; color: #58a6ff; line-height: 1; text-shadow: 0 0 30px rgba(88,166,255,0.5); }
+        .result-digit.show { animation: popIn 0.4s ease; }
+        @keyframes popIn { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }
+        .result-label { color: #6e7681; font-size: 0.85rem; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .confidence-section { margin-top: 16px; width: 100%; }
+        .confidence-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .confidence-label span:first-child { color: #8b949e; font-size: 0.85rem; }
+        .confidence-value { color: #3fb950; font-weight: 700; font-size: 1.1rem; }
+        .confidence-bar-bg { background: #21262d; border-radius: 8px; height: 12px; overflow: hidden; }
+        .confidence-bar { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #1565c0, #00c853); width: 0%; transition: width 0.8s ease; }
+        .prob-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-top: 8px; }
+        .prob-item { background: #0d1117; border-radius: 8px; padding: 10px 6px; text-align: center; border: 1px solid #21262d; transition: all 0.3s; }
+        .prob-item.top { border-color: #58a6ff; background: #0d1f3c; }
+        .prob-digit { font-size: 1.3rem; font-weight: 700; color: #c9d1d9; }
+        .prob-item.top .prob-digit { color: #58a6ff; }
+        .prob-percent { font-size: 0.7rem; color: #6e7681; margin-top: 2px; }
+        .prob-item.top .prob-percent { color: #90caf9; }
+        .history-list { list-style: none; max-height: 220px; overflow-y: auto; }
+        .history-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; margin-bottom: 6px; background: #0d1117; border: 1px solid #21262d; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from{transform:translateX(-10px);opacity:0} to{transform:translateX(0);opacity:1} }
+        .history-num { font-size: 1.6rem; font-weight: 900; color: #58a6ff; min-width: 30px; text-align: center; }
+        .history-conf { font-size: 0.8rem; color: #6e7681; }
+        .history-conf span { color: #3fb950; font-weight: 600; }
+        .history-time { font-size: 0.75rem; color: #484f58; }
+        .empty-history { text-align: center; color: #484f58; padding: 30px; font-style: italic; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .stat-item { background: #0d1117; border-radius: 10px; padding: 16px; text-align: center; border: 1px solid #21262d; }
+        .stat-value { font-size: 1.8rem; font-weight: 800; color: #58a6ff; }
+        .stat-label { font-size: 0.75rem; color: #6e7681; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-row { display: flex; justify-content: space-between; padding: 8px 12px; background: #0d1117; border-radius: 8px; border: 1px solid #21262d; margin-bottom: 6px; }
+        .info-key { color: #6e7681; font-size: 0.85rem; }
+        .info-val { color: #3fb950; font-size: 0.85rem; font-weight: 600; }
+        .loading { display: none; text-align: center; color: #58a6ff; font-size: 0.9rem; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @media(max-width:768px){ .main-grid{grid-template-columns:1fr} }
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <h1>Handwritten Digit Recognition</h1>
+        <p>Draw any digit (0 to 9) on the canvas and click Predict</p>
+        <div class='badge'>DEEP NEURAL NETWORK  —  CNN MODEL  —  99%+ ACCURACY</div>
+    </div>
+    <div class='main-grid'>
+        <div style='display:flex;flex-direction:column;gap:20px'>
+            <div class='card'>
+                <h2>Drawing Canvas</h2>
+                <div class='canvas-wrapper'>
+                    <canvas id='canvas' width='280' height='280'></canvas>
+                    <p class='canvas-hint'>Draw with your mouse or trackpad — use thick strokes</p>
+                    <!-- Upload Section -->
+<div style='width:100%;margin-bottom:12px;'>
+    <div style='background:#0d1117;border:2px dashed #30363d;border-radius:10px;padding:16px;text-align:center;transition:border-color 0.3s;' id='upload-zone'>
+        <input type='file' id='upload-input' accept='image/*' style='display:none' onchange='handleUpload(event)'>
+        <p style='color:#6e7681;font-size:0.85rem;margin-bottom:10px;'>— OR upload a photo of handwritten digit —</p>
+        <button onclick='document.getElementById("upload-input").click()'
+            style='background:linear-gradient(135deg,#006D77,#00897B);color:white;border:none;padding:10px 20px;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer;'>
+            📁 Upload Image
+        </button>
+        <div id='upload-preview' style='margin-top:12px;display:none;'>
+            <img id='preview-img' style='max-width:120px;max-height:120px;border-radius:8px;border:2px solid #30363d;'/>
+            <p id='upload-filename' style='color:#6e7681;font-size:0.75rem;margin-top:6px;'></p>
+            <button onclick='predictUpload()'
+                style='margin-top:8px;background:linear-gradient(135deg,#006D77,#00897B);color:white;border:none;padding:10px 24px;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;'>
+                🔍 Predict Uploaded Image
+            </button>
+        </div>
+    </div>
+</div>
+<div class='btn-group'>
+                        <button class='btn btn-predict' onclick='predict()'>PREDICT</button>
+                        <button class='btn btn-clear' onclick='clearCanvas()'>CLEAR</button>
+                    </div>
+                    <div class='loading' id='loading'>Analyzing your digit...</div>
+                </div>
+            </div>
+            <div class='card'>
+                <h2>Prediction Result</h2>
+                <div class='result-box'>
+                    <div class='result-digit' id='result-digit'>?</div>
+                    <div class='result-label' id='result-label'>Draw a digit above and click Predict</div>
+                </div>
+                <div class='confidence-section' id='conf-section' style='display:none'>
+                    <div class='confidence-label'>
+                        <span>Confidence</span>
+                        <span class='confidence-value' id='conf-value'>0%</span>
+                    </div>
+                    <div class='confidence-bar-bg'>
+                        <div class='confidence-bar' id='conf-bar'></div>
+                    </div>
+                </div>
+            </div>
+            <div class='card'>
+                <h2>All Digit Probabilities</h2>
+                <div class='prob-grid' id='prob-grid'>
+                    <div class='prob-item' id='p0'><div class='prob-digit'>0</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p1'><div class='prob-digit'>1</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p2'><div class='prob-digit'>2</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p3'><div class='prob-digit'>3</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p4'><div class='prob-digit'>4</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p5'><div class='prob-digit'>5</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p6'><div class='prob-digit'>6</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p7'><div class='prob-digit'>7</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p8'><div class='prob-digit'>8</div><div class='prob-percent'>—</div></div>
+                    <div class='prob-item' id='p9'><div class='prob-digit'>9</div><div class='prob-percent'>—</div></div>
+                </div>
+            </div>
+        </div>
+        <div style='display:flex;flex-direction:column;gap:20px'>
+            <div class='card'>
+                <h2>Session Stats</h2>
+                <div class='stats-grid'>
+                    <div class='stat-item'><div class='stat-value' id='total-predictions'>0</div><div class='stat-label'>Total Predictions</div></div>
+                    <div class='stat-item'><div class='stat-value' id='avg-confidence'>—</div><div class='stat-label'>Avg Confidence</div></div>
+                    <div class='stat-item'><div class='stat-value' id='highest-conf'>—</div><div class='stat-label'>Best Confidence</div></div>
+                    <div class='stat-item'><div class='stat-value' id='last-digit'>—</div><div class='stat-label'>Last Digit</div></div>
+                </div>
+            </div>
+            <div class='card'>
+                <h2>Model Information</h2>
+                <div id='model-info'><div class='info-row'><span class='info-key'>Loading...</span></div></div>
+            </div>
+            <div class='card' style='flex:1'>
+                <h2>Prediction History</h2>
+                <ul class='history-list' id='history-list'>
+                    <li class='empty-history'>No predictions yet. Start drawing!</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false, lastX = 0, lastY = 0;
+        let totalPredictions = 0, confidenceSum = 0, bestConfidence = 0;
+ 
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 18;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, 280, 280);
+ 
+        function getPos(e) { const r = canvas.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; }
+        function getTouchPos(e) { const r = canvas.getBoundingClientRect(); return [e.touches[0].clientX-r.left, e.touches[0].clientY-r.top]; }
+ 
+        canvas.addEventListener('mousedown', e => { isDrawing=true; [lastX,lastY]=getPos(e); canvas.classList.add('drawing'); });
+        canvas.addEventListener('mousemove', e => {
+            if (!isDrawing) return;
+            const [x,y] = getPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke();
+            [lastX,lastY] = [x,y];
+        });
+        canvas.addEventListener('mouseup', () => { isDrawing=false; canvas.classList.remove('drawing'); });
+        canvas.addEventListener('mouseleave', () => { isDrawing=false; canvas.classList.remove('drawing'); });
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing=true; [lastX,lastY]=getTouchPos(e); });
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault(); if(!isDrawing) return;
+            const [x,y]=getTouchPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(x,y); ctx.stroke();
+            [lastX,lastY]=[x,y];
+        });
+        canvas.addEventListener('touchend', () => { isDrawing=false; });
+ 
+        function clearCanvas() {
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,280,280);
+            document.getElementById('result-digit').textContent='?';
+            document.getElementById('result-label').textContent='Draw a digit above and click Predict';
+            document.getElementById('conf-section').style.display='none';
+            for(let i=0;i<=9;i++){const el=document.getElementById('p'+i);el.classList.remove('top');el.querySelector('.prob-percent').textContent='—';}
+        }
+ 
+        async function predict() {
+            document.getElementById('loading').style.display='block';
+            const imageData = canvas.toDataURL('image/png');
+            try {
+                const res = await fetch('/predict',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:imageData})});
+                const data = await res.json();
+                document.getElementById('loading').style.display='none';
+                if(data.success){ showResult(data); addToHistory(data); updateStats(data.confidence); }
+                else alert('Error: '+data.error);
+            } catch(e) {
+                document.getElementById('loading').style.display='none';
+                alert('Cannot connect to server. Make sure python3 app.py is running.');
+            }
+        }
+ 
+        function showResult(data) {
+            const el=document.getElementById('result-digit');
+            el.textContent=data.digit; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+            document.getElementById('result-label').textContent='Predicted Digit';
+            document.getElementById('conf-section').style.display='block';
+            document.getElementById('conf-value').textContent=data.confidence.toFixed(1)+'%';
+            setTimeout(()=>{ document.getElementById('conf-bar').style.width=data.confidence+'%'; },50);
+            for(let i=0;i<=9;i++){const el=document.getElementById('p'+i);el.classList.remove('top');}
+            data.probabilities.forEach((p,idx)=>{
+                const el=document.getElementById('p'+p.digit);
+                el.querySelector('.prob-percent').textContent=p.probability.toFixed(1)+'%';
+                if(idx===0) el.classList.add('top');
+            });
+        }
+ 
+        function addToHistory(data) {
+            const list=document.getElementById('history-list');
+            const empty=list.querySelector('.empty-history');
+            if(empty) empty.remove();
+            const li=document.createElement('li');
+            li.className='history-item';
+            li.innerHTML=`<div class='history-num'>${data.digit}</div><div style='flex:1'><div class='history-conf'>Confidence: <span>${data.confidence.toFixed(1)}%</span></div><div class='history-time'>${new Date().toLocaleTimeString()}</div></div>`;
+            list.insertBefore(li,list.firstChild);
+        }
+ 
+        function updateStats(confidence) {
+            totalPredictions++; confidenceSum+=confidence;
+            if(confidence>bestConfidence) bestConfidence=confidence;
+            document.getElementById('total-predictions').textContent=totalPredictions;
+            document.getElementById('avg-confidence').textContent=(confidenceSum/totalPredictions).toFixed(1)+'%';
+            document.getElementById('highest-conf').textContent=bestConfidence.toFixed(1)+'%';
+            document.getElementById('last-digit').textContent=document.getElementById('result-digit').textContent;
+        }
+ 
+        async function loadModelInfo() {
+            try {
+                const res=await fetch('/model_info'); const info=await res.json();
+                document.getElementById('model-info').innerHTML=`
+                    <div class='info-row'><span class='info-key'>Dataset</span><span class='info-val'>${info.dataset}</span></div>
+                    <div class='info-row'><span class='info-key'>Training Samples</span><span class='info-val'>${info.training_samples.toLocaleString()}</span></div>
+                    <div class='info-row'><span class='info-key'>Test Samples</span><span class='info-val'>${info.test_samples.toLocaleString()}</span></div>
+                    <div class='info-row'><span class='info-key'>Architecture</span><span class='info-val'>${info.architecture}</span></div>
+                    <div class='info-row'><span class='info-key'>Parameters</span><span class='info-val'>${info.total_params.toLocaleString()}</span></div>
+                    <div class='info-row'><span class='info-key'>Test Accuracy</span><span class='info-val'>${info.accuracy}</span></div>`;
+            } catch(e) {}
+        }
+        // ── UPLOAD HANDLING ─────────────────────────────────────────
+function handleUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const preview = document.getElementById('upload-preview');
+    const previewImg = document.getElementById('preview-img');
+    const filename = document.getElementById('upload-filename');
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        previewImg.src = e.target.result;
+        filename.textContent = file.name;
+        preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+async function predictUpload() {
+    const input = document.getElementById('upload-input');
+    const file = input.files[0];
+    if (!file) { alert('Please select an image first.'); return; }
+
+    document.getElementById('loading').style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/predict_upload', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+
+        if (data.success) {
+            showResult(data);
+            addToHistory(data);
+            updateStats(data.confidence);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch(e) {
+        document.getElementById('loading').style.display = 'none';
+        alert('Cannot connect to server. Make sure python3 app.py is running.');
+    }
+}
+        loadModelInfo();
+    </script>
+</body>
+</html>
+
